@@ -1,16 +1,25 @@
 package com.home.atm;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.Worker;
+
 import android.util.Log;
 import android.view.View;
 
@@ -20,8 +29,11 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_LOGIN = 100;
@@ -32,8 +44,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if(requestCode == REQUEST_LOGIN){
-            if(resultCode != RESULT_OK){
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_LOGIN) {
+            if (resultCode != RESULT_OK) {
                 finish();
             }
 
@@ -59,8 +72,7 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+              makeNotification();
             }
         });
         //Recycler
@@ -74,7 +86,39 @@ public class MainActivity extends AppCompatActivity {
         IconAdapter adapter = new IconAdapter();
         recyclerView.setAdapter(adapter);
 
+
     }
+
+    private void makeNotification() {
+        String channelId = "love";
+        String channelName = "我的最愛";
+        NotificationManager manager = getNotificationManager(channelId, channelName);
+        Intent intent = new Intent(this,TransActivity.class);
+        PendingIntent pIntent = PendingIntent.getActivities(this,0, new Intent[]{intent},PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.heart1)
+                .setContentTitle("This is Title")
+                .setContentText("This is Text")
+                .setSubText("This is info ")
+                .setWhen(System.currentTimeMillis())
+                .setChannelId(channelId)
+                .setContentIntent(pIntent);
+        manager.notify(1,builder.build());
+
+    }
+
+    private NotificationManager getNotificationManager(String channelId, String channelName) {
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(channelId,
+                    channelName,
+                    NotificationManager.IMPORTANCE_HIGH);
+            manager.createNotificationChannel(channel);
+        }
+        return manager;
+    }
+
 
     private void setupFunctions() {
         functions = new ArrayList<>();
@@ -128,12 +172,17 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "itemClicked: " + function.getName());
         switch (function.getIcon()){
             case R.drawable.func_transaction:
+                startActivity(new Intent(this,TransActivity.class));
                 break;
             case R.drawable.func_balance:
                 break;
             case R.drawable.func_finance:
+                Intent finance = new Intent(this,FinanceActivity.class);
+                startActivity(finance);
                 break;
             case  R.drawable.func_contacts:
+                Intent contacts = new Intent(this, ContactActivity.class);
+                startActivity(contacts);
                 break;
             case R.drawable.func_exit:
                 finish();
@@ -153,13 +202,25 @@ public class MainActivity extends AppCompatActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+        switch (item.getItemId()){
+            case R.id.action_settings : {
+                return true;
+            }
+            case R.id.action_work : {
+                OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(MyWorker.class).setInitialDelay(30, TimeUnit.SECONDS).build();
+                WorkManager.getInstance(this).enqueue(workRequest);
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                Log.d(TAG, "onOptionsItemSelected: "  + sdf.format(new Date()));
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+
+            }
         }
+
+
+
 
         return super.onOptionsItemSelected(item);
     }
+
+
 }
